@@ -1,0 +1,32 @@
+# Entorno virtual
+venv/
+env/
+ENV/
+
+# Archivos de Python
+__pycache__/
+*.pyc
+*.pyo
+
+# API keys (importante: no subir tus claves reales)
+.env
+
+# Resultados generados
+outputs/
+*.json
+*.csv
+*.md
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+*.log
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+outputs/
+*.json
+*.csv
+*.md
