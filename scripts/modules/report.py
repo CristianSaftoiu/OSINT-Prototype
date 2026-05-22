@@ -55,7 +55,7 @@ class ReportGenerator:
             elif isinstance(value, dict) and value.get('status') in ['error', 'no_api_key']:
                 apis_error += 1
         
-        md_content = f"""# Informe OSINT - Zunder.com
+        md_content = f"""# Informe OSINT - {discovery_data.get('domain', 'N/D')}
 
 **Fecha de generación:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 **Dominio analizado:** {discovery_data.get('domain', 'N/D')}
@@ -83,7 +83,7 @@ class ReportGenerator:
         for i, sub in enumerate(discovery_data.get('subdomains', [])[:40], 1):
             md_content += f"| {i} | `{sub}` |\n"
         
-        # ========= SECCIÓN DE VERIFICACIÓN DE ACTIVIDAD (CORREGIDA) =========
+        # ========= SECCIÓN DE VERIFICACIÓN DE ACTIVIDAD =========
         md_content += f"""
 ---
 
@@ -109,7 +109,6 @@ class ReportGenerator:
 |------|--------|---------------------|
 """
         
-        # Bucle para resultados detallados - CORREGIDO
         resultados_detallados = activos_info.get('resultados_detallados', [])
         for item in resultados_detallados:
             host = item.get('host', 'N/A')
@@ -121,7 +120,6 @@ class ReportGenerator:
             else:
                 md_content += f"| `{host}` | ❌ {estado} | {metodo} |\n"
         
-        # ========= CONTINUACIÓN DEL INFORME =========
         md_content += f"""
 ---
 
@@ -218,6 +216,32 @@ class ReportGenerator:
         if gl.get('status') == 'ok':
             md_content += f"- **GitLab:** {gl.get('total_count', 0)} proyectos\n"
         
+        # ==================== SECCIÓN DARK WEB (NUEVA) ====================
+        md_content += f"""
+## 🌑 Monitorización en Dark Web (Tor)
+
+"""
+        dw = threat_data.get('darkweb', {})
+        if dw.get('status') == 'error':
+            md_content += f"⚠️ **Error:** {dw.get('message', 'Desconocido')}\n"
+        elif dw.get('status') == 'skipped':
+            md_content += "⏩ Búsqueda en Dark Web omitida por el usuario.\n"
+        elif dw.get('status') == 'success':
+            md_content += f"- **Palabra clave:** `{dw.get('keyword', 'N/A')}`\n"
+            md_content += f"- **Enlaces .onion encontrados:** {dw.get('total', 0)}\n\n"
+            if dw.get('results'):
+                md_content += "| # | Título | Enlace |\n"
+                md_content += "|---|--------|--------|\n"
+                for i, r in enumerate(dw['results'][:10], 1):
+                    title = r.get('title', 'N/A')[:50]
+                    link = r.get('link', 'N/A')
+                    md_content += f"| {i} | {title} | `{link}` |\n"
+            else:
+                md_content += "No se encontraron enlaces .onion para la búsqueda.\n"
+        else:
+            md_content += "No se realizó búsqueda.\n"
+        
+        # ========= CONTINUACIÓN INFORME ORIGINAL =========
         md_content += f"""
 ### Herramientas de uso manual (sin API pública)
 
@@ -247,6 +271,7 @@ class ReportGenerator:
 | Reputación de IP | AbuseIPDB |
 | Subdominios | BeVigil |
 | Repositorios | GitHub, GitLab |
+| **Dark Web** | Ahmia (motor .onion) a través de Tor |
 
 ---
 
