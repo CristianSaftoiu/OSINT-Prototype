@@ -39,7 +39,7 @@ Si Tor no está corriendo, se mostrará un mensaje de error y se omitirá la bú
 git clone https://github.com/CristianSaftoiu/OSINT-Prototype.git
 cd OSINT-Prototype
 ```
-### 1. Crear entorno virtual
+### 2. Crear entorno virtual
 
 ```bash
 python3 -m venv venv
