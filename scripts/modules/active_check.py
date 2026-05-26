@@ -1,44 +1,56 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """
-Módulo de verificación de actividad de máquinas
-Métodos: ICMP (ping) y TCP (conexión a puerto 80)
+Módulo de verificación de actividad de máquinas.
+Métodos: ICMP (ping) y TCP (conexión a puerto 80).
 """
 
-import subprocess
-import socket
-import platform
-from typing import Dict, List, Tuple
+# ==================== IMPORTACIONES ====================
+import subprocess   # Para ejecutar el comando ping del sistema operativo
+import socket       # Para intentar conexiones TCP (connect_ex)
+import platform     # Para detectar el sistema operativo y ajustar los parámetros de ping
+from typing import Dict, List, Tuple  # Para anotar tipos
 
+# ==================== CLASE PRINCIPAL ====================
 class ActiveChecker:
     """
-    Clase para verificar si una máquina está activa mediante:
-    1. ICMP (ping) - Envía ICMP Echo Request, espera ICMP Echo Reply
-    2. TCP - Conexión a puerto 80/TCP con handshake SYN/SYN+ACK
+    Clase para verificar si una máquina (host) está activa mediante:
+    1. ICMP (ping) - Envía ICMP Echo Request, espera ICMP Echo Reply.
+    2. TCP - Conexión a puerto 80/TCP con handshake SYN/SYN+ACK.
     """
     
     def __init__(self):
-        self.sistema = platform.system().lower()
-        self.resultados = {}
-    
+        """Inicializa el detector guardando el nombre del sistema operativo."""
+        self.sistema = platform.system().lower()   # 'windows', 'linux', 'darwin' (macOS)
+        self.resultados = {}                       # (no se usa intensivamente, para futura ampliación)
+
+    # ------------------------------------------------------------
+    # 1. Verificación por ICMP (ping)
+    # ------------------------------------------------------------
     def check_icmp(self, host: str) -> Tuple[bool, str]:
         """
-        Envía petición ICMP (ping) y espera respuesta ICMP-0
-        Retorna: (activo, mensaje)
+        Envía una petición ICMP Echo Request (ping) y espera respuesta ICMP Echo Reply.
+        Retorna una tupla: (activo: bool, mensaje: str)
         """
         try:
-            # Parámetros según sistema operativo
+            # Parámetros según el sistema operativo (Windows usa opciones diferentes)
             if self.sistema == "windows":
+                # Windows: -n 1 (1 paquete), -w 2000 (timeout en ms)
                 param = ['ping', '-n', '1', '-w', '2000', host]
             else:  # Linux / Mac / Darwin
+                # Unix-like: -c 1 (1 paquete), -W 2 (timeout en segundos)
                 param = ['ping', '-c', '1', '-W', '2', host]
             
+            # Ejecutar el comando ping
             result = subprocess.run(
                 param,
-                capture_output=True,
-                text=True,
-                timeout=5
+                capture_output=True,   # Captura stdout y stderr
+                text=True,             # Devuelve cadenas de texto (no bytes)
+                timeout=5              # Timeout total del subproceso
             )
             
-            # Verificar respuesta ICMP-0 (código 0 = Echo Reply)
+            # Código de retorno 0 indica que hubo respuesta (ICMP Echo Reply)
             if result.returncode == 0:
                 return (True, f"ICMP: Host {host} ACTIVO (respuesta ICMP-0 recibida)")
             else:
@@ -48,45 +60,53 @@ class ActiveChecker:
             return (False, f"ICMP: Timeout - {host} no responde")
         except Exception as e:
             return (False, f"ICMP: Error - {str(e)}")
-    
+
+    # ------------------------------------------------------------
+    # 2. Verificación por TCP (conexión al puerto 80)
+    # ------------------------------------------------------------
     def check_tcp(self, host: str, port: int = 80, timeout: int = 3) -> Tuple[bool, str]:
         """
-        Establece conexión TCP al puerto especificado (por defecto 80/TCP)
-        Envía SYN, espera SYN+ACK o RST
-        Retorna: (activo, mensaje)
+        Intenta establecer una conexión TCP al puerto especificado.
+        Envía SYN, espera SYN+ACK (conexión exitosa) o RST (puerto cerrado).
+        Retorna: (activo: bool, mensaje: str)
         """
         try:
-            # Crear socket TCP
+            # Crear un socket TCP
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(timeout)
+            sock.settimeout(timeout)       # Timeout para la operación de conexión
             
-            # Intentar conexión (envía SYN)
+            # connect_ex devuelve 0 si la conexión fue exitosa (SYN+ACK recibido)
             resultado = sock.connect_ex((host, port))
             
-            # Cerrar socket
+            # Cerrar el socket (libera recursos)
             sock.close()
             
-            # Si resultado == 0, conexión exitosa (SYN+ACK recibido)
+            # Si resultado == 0, el host respondió al SYN con SYN+ACK -> activo
             if resultado == 0:
                 return (True, f"TCP/{port}: Host {host} ACTIVO (SYN+ACK recibido)")
             else:
                 return (False, f"TCP/{port}: Host {host} no responde en puerto {port}")
                 
         except socket.timeout:
+            # Timeout: no hubo respuesta al SYN
             return (False, f"TCP/{port}: Timeout - {host} no responde")
         except ConnectionRefusedError:
-            # RST recibido -> máquina activa pero puerto cerrado
+            # RST recibido: el host está activo pero el puerto está cerrado
             return (True, f"TCP/{port}: Host {host} ACTIVO (RST recibido - puerto {port} cerrado)")
         except Exception as e:
             return (False, f"TCP/{port}: Error - {str(e)}")
-    
+
+    # ------------------------------------------------------------
+    # 3. Verificación combinada (ICMP + TCP fallback)
+    # ------------------------------------------------------------
     def check_host(self, host: str, tcp_port: int = 80) -> Dict:
         """
-        Verifica actividad de un host combinando ICMP y TCP (fallback)
+        Verifica actividad de un host combinando ICMP y TCP (fallback).
         Estrategia:
-        1. Intentar ICMP primero
-        2. Si ICMP falla, intentar TCP al puerto 80
-        3. Si TCP falla, considerar "NO ACTIVA"
+          1. Intentar ICMP primero.
+          2. Si ICMP falla, intentar TCP al puerto 80.
+          3. Si también falla, considerar "NO ACTIVA (o no detectable)".
+        Retorna un diccionario con host, estado, método de detección y detalle.
         """
         print(f"    [*] Verificando actividad de: {host}")
         
@@ -106,10 +126,12 @@ class ActiveChecker:
                 metodo = "TCP"
                 mensaje = tcp_msg
             else:
+                # Ambos fallaron: no podemos determinar actividad
                 estado = "NO ACTIVA (o no detectable)"
                 metodo = "ICMP+TCP"
                 mensaje = f"ICMP: no respuesta | TCP: no respuesta"
         
+        # Construir resultado para este host
         resultado = {
             "host": host,
             "estado": estado,
@@ -117,40 +139,58 @@ class ActiveChecker:
             "detalle": mensaje
         }
         
+        # Mostrar icono en consola según resultado (✓ o ✗)
+        # Nota: se usa 'if "ACTIVA" in estado' porque el texto exacto puede variar
         print(f"    [{'✓' if 'ACTIVA' in estado else '✗'}] {host} -> {estado}")
         
         return resultado
-    
+
+    # ------------------------------------------------------------
+    # 4. Verificar múltiples hosts (lote)
+    # ------------------------------------------------------------
     def check_multiple_hosts(self, hosts: List[str], tcp_port: int = 80) -> List[Dict]:
-        """Verifica múltiples hosts y muestra el resultado real"""
+        """
+        Verifica una lista de hosts (dominios o IPs) y muestra el resultado.
+        Retorna una lista de diccionarios con los resultados de cada host.
+        """
         resultados = []
         print("\n    Resultados de verificación:")
         print("    " + "-" * 40)
         
         for host in hosts:
-            if host:
+            if host:   # Ignorar entradas vacías
                 resultado = self.check_host(host.strip(), tcp_port)
                 resultados.append(resultado)
                 
-                # Mostrar resultado con icono correcto
+                # Mensaje adicional con icono y método
                 if resultado['estado'] == "ACTIVA":
                     print(f"    [✓] {host} -> ACTIVA (detectada por {resultado['metodo_deteccion']})")
                 else:
                     print(f"    [✗] {host} -> NO ACTIVA (no responde a ICMP ni TCP/80)")
         
         return resultados
-    
+
+    # ------------------------------------------------------------
+    # 5. Generar resumen estadístico
+    # ------------------------------------------------------------
     def generar_resumen(self, resultados: List[Dict]) -> Dict:
-        """Genera estadísticas de los resultados"""
+        """
+        Analiza la lista de resultados y genera estadísticas:
+          - total_hosts, activos, no_activos
+          - detectados_por_icmp, detectados_por_tcp
+          - porcentaje_actividad
+        """
         total = len(resultados)
         
-        # Contar SOLO los que son EXACTAMENTE "ACTIVA"
+        # Contar SOLO los que tienen estado EXACTAMENTE "ACTIVA"
         activos = sum(1 for r in resultados if r.get('estado') == "ACTIVA")
         no_activos = total - activos
         
-        # Contar métodos de detección solo para los ACTIVOS
-        activos_icmp = sum(1 for r in resultados if r.get('estado') == "ACTIVA" and r.get('metodo_deteccion') == "ICMP")
-        activos_tcp = sum(1 for r in resultados if r.get('estado') == "ACTIVA" and r.get('metodo_deteccion') == "TCP")
+        # Entre los activos, contar cuántos fueron detectados por ICMP y cuántos por TCP
+        activos_icmp = sum(1 for r in resultados 
+                           if r.get('estado') == "ACTIVA" and r.get('metodo_deteccion') == "ICMP")
+        activos_tcp = sum(1 for r in resultados 
+                          if r.get('estado') == "ACTIVA" and r.get('metodo_deteccion') == "TCP")
         
         return {
             "total_hosts": total,
@@ -160,35 +200,3 @@ class ActiveChecker:
             "detectados_por_tcp": activos_tcp,
             "porcentaje_actividad": round((activos / total) * 100, 2) if total > 0 else 0
         }
-
-
-
-# Prueba independiente del módulo
-if __name__ == "__main__":
-    checker = ActiveChecker()
-    
-    # Pruebas con diferentes hosts
-    test_hosts = [
-        "google.com",      # Debería estar ACTIVO
-        "8.8.8.8",         # DNS Google, ACTIVO
-        "192.168.1.1",     # Posible router, puede no responder
-        "zunder.com"       # Dominio del proyecto
-    ]
-    
-    print("=" * 60)
-    print("PRUEBA DEL MÓDULO DE VERIFICACIÓN DE ACTIVIDAD")
-    print("=" * 60)
-    
-    resultados = checker.check_multiple_hosts(test_hosts)
-    
-    print("\n" + "=" * 60)
-    print("RESUMEN DE RESULTADOS")
-    print("=" * 60)
-    
-    resumen = checker.generar_resumen(resultados)
-    print(f"  Total hosts analizados: {resumen['total_hosts']}")
-    print(f"  Hosts ACTIVOS: {resumen['activos']}")
-    print(f"  Hosts NO ACTIVOS: {resumen['no_activos']}")
-    print(f"  Detectados por ICMP: {resumen['detectados_por_icmp']}")
-    print(f"  Detectados por TCP: {resumen['detectados_por_tcp']}")
-    print(f"  Porcentaje de actividad: {resumen['porcentaje_actividad']}%")

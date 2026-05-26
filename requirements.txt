@@ -4,8 +4,9 @@ beautifulsoup4>=4.11.0
 python-dotenv>=1.0.0
 dnspython>=2.2.0
 python-whois>=0.7.0
+osint-darkweb-pkg>=0.1.0
 
-# Opcionales pero recomendadas
+# Opcionales
 lxml>=4.9.0
 pandas>=1.5.0
 censys>=2.2.0

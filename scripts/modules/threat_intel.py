@@ -1,21 +1,40 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """
-Módulo de Threat Intelligence - Versión COMPLETA con TODAS las APIs
+Módulo de Threat Intelligence - Versión COMPLETA con TODAS las APIs.
 APIs incluidas: Shodan, Censys, VirusTotal, AlienVault, IPinfo, IPdata,
-Hunter, Netlas, urlscan, AbuseIPDB, BeVigil, GitHub, GitLab, Wappalyzer (guiado), BuiltWith (guiado)
+Hunter, Netlas, urlscan, AbuseIPDB, BeVigil, GitHub, GitLab.
+Además incluye guías para herramientas sin API pública (Wappalyzer, BuiltWith).
 """
 
-import os
-import requests
-import socket
-from typing import Dict
+# ==================== IMPORTACIONES ====================
+import os          # Para acceder a variables de entorno (API keys)
+import requests    # Para hacer peticiones HTTP a las APIs
+import socket      # Para resolver el dominio a IP (gethostbyname)
+from typing import Dict  # Para anotar tipos (mejora la legibilidad)
 
+# ==================== CLASE PRINCIPAL ====================
 class ThreatIntel:
+    """
+    Clase que consulta múltiples APIs de inteligencia de amenazas.
+    Cada método de consulta devuelve un diccionario con:
+        - 'status': 'ok', 'error', 'no_api_key' o 'manual'
+        - Datos específicos de la API o mensaje de error.
+    """
+
     def __init__(self, domain: str):
+        """
+        Constructor: recibe el dominio, carga las API keys del entorno,
+        resuelve la IP del dominio y prepara la estructura de resultados.
+        :param domain: dominio a analizar (ej: 'zunder.com')
+        """
         self.domain = domain
-        self.results = {}
-        self.subdomains_from_vt = [] 
-        
-        # Cargar API keys desde environment variables
+        self.results = {}                     # Almacenará resultados acumulados (no se usa mucho)
+        self.subdomains_from_vt = []          # Lista de subdominios que devuelve VirusTotal
+
+        # ---------- Cargar API keys desde variables de entorno ----------
+        # Si no están definidas, se asigna cadena vacía (luego se comprueba)
         self.shodan_api_key = os.getenv("SHODAN_API_KEY", "")
         self.censys_api_id = os.getenv("CENSYS_API_ID", "")
         self.censys_api_secret = os.getenv("CENSYS_API_SECRET", "")
@@ -28,18 +47,24 @@ class ThreatIntel:
         self.urlscan_api_key = os.getenv("URLSCAN_API_KEY", "")
         self.abuseipdb_api_key = os.getenv("ABUSEIPDB_API_KEY", "")
         self.bevigil_api_key = os.getenv("BEVIGIL_API_KEY", "")
-        
-        # Resolver IP del dominio
+
+        # ---------- Resolver la dirección IP del dominio ----------
         try:
             self.ip_address = socket.gethostbyname(domain)
             print(f"    [+] IP resuelta: {self.ip_address}")
-        except:
+        except Exception:
             self.ip_address = None
             print(f"    [!] No se pudo resolver IP de {domain}")
-    
-    # ==================== API 1: VIRUSTOTAL ====================
+
+    # ------------------------------------------------------------
+    # API 1: VIRUSTOTAL
+    # ------------------------------------------------------------
     def query_virustotal(self) -> Dict:
-        """VirusTotal - Reputación del dominio y subdominios"""
+        """
+        Consulta VirusTotal (v3 API) para obtener reputación del dominio,
+        estadísticas de análisis y lista de subdominios asociados.
+        Requiere clave en VIRUSTOTAL_API_KEY.
+        """
         if not self.virustotal_api_key:
             return {"status": "no_api_key", "message": "Configurar VIRUSTOTAL_API_KEY en .env"}
         
@@ -53,8 +78,7 @@ class ThreatIntel:
             if response.status_code == 200:
                 data = response.json()
                 attributes = data.get('data', {}).get('attributes', {})
-                
-                # Extraer subdominios de VirusTotal
+                # Guardar subdominios en atributo de clase para usarlos luego en combinación
                 if attributes.get('subdomains'):
                     self.subdomains_from_vt = attributes.get('subdomains', [])
                 
@@ -63,15 +87,21 @@ class ThreatIntel:
                     "reputation": attributes.get('reputation', 0),
                     "last_analysis_stats": attributes.get('last_analysis_stats', {}),
                     "categories": attributes.get('categories', {}),
-                    "subdomains": attributes.get('subdomains', [])[:15]
+                    "subdomains": attributes.get('subdomains', [])[:15]  # limitar a 15
                 }
             return {"status": "error", "code": response.status_code}
         except Exception as e:
             return {"status": "error", "message": str(e)}
-    
-    # ==================== API 2: SHODAN ====================
+
+    # ------------------------------------------------------------
+    # API 2: SHODAN
+    # ------------------------------------------------------------
     def query_shodan(self) -> Dict:
-        """Shodan - Puertos, servicios y vulnerabilidades"""
+        """
+        Consulta Shodan para obtener puertos abiertos, servicios,
+        vulnerabilidades conocidas y tags de la IP del dominio.
+        Requiere SHODAN_API_KEY.
+        """
         if not self.shodan_api_key:
             return {"status": "no_api_key", "message": "Configurar SHODAN_API_KEY en .env"}
         
@@ -97,16 +127,23 @@ class ThreatIntel:
             return {"status": "error", "code": response.status_code}
         except Exception as e:
             return {"status": "error", "message": str(e)}
-    
-    # ==================== API 3: CENSYS ====================
+
+    # ------------------------------------------------------------
+    # API 3: CENSYS
+    # ------------------------------------------------------------
     def query_censys(self) -> Dict:
-        """Censys - Certificados y servicios expuestos"""
+        """
+        Consulta Censys (v2) para buscar certificados TLS que contengan el dominio.
+        Utiliza la biblioteca 'censys' (debe estar instalada).
+        Requiere CENSYS_API_ID y CENSYS_API_SECRET.
+        """
         if not self.censys_api_id or not self.censys_api_secret:
             return {"status": "no_api_key", "message": "Configurar CENSYS_API_ID y CENSYS_API_SECRET en .env"}
         
         print(f"[*] Censys: consultando certificados de {self.domain}")
         
         try:
+            # Importación dinámica para que no sea obligatoria si no se usa
             from censys.search import CensysCertificates
             censys = CensysCertificates(api_id=self.censys_api_id, api_secret=self.censys_api_secret)
             query = f"parsed.names: {self.domain}"
@@ -128,10 +165,16 @@ class ThreatIntel:
             return {"status": "error", "message": "Instalar: pip install censys"}
         except Exception as e:
             return {"status": "error", "message": str(e)}
-    
-    # ==================== API 4: ALIENVAULT OTX ====================
+
+    # ------------------------------------------------------------
+    # API 4: ALIENVAULT OTX
+    # ------------------------------------------------------------
     def query_alienvault(self) -> Dict:
-        """AlienVault OTX - Indicadores de amenazas"""
+        """
+        Consulta AlienVault OTX para obtener pulses (indicadores de amenaza)
+        relacionados con el dominio.
+        Requiere ALIENVAULT_API_KEY.
+        """
         if not self.alienvault_api_key:
             return {"status": "no_api_key", "message": "Configurar ALIENVAULT_API_KEY en .env"}
         
@@ -153,10 +196,15 @@ class ThreatIntel:
             return {"status": "error", "code": response.status_code}
         except Exception as e:
             return {"status": "error", "message": str(e)}
-    
-    # ==================== API 5: IPINFO ====================
+
+    # ------------------------------------------------------------
+    # API 5: IPINFO
+    # ------------------------------------------------------------
     def query_ipinfo(self) -> Dict:
-        """IPinfo - Geolocalización y ASN"""
+        """
+        Consulta IPinfo para geolocalización, ASN y proveedor de la IP.
+        Requiere IPINFO_API_KEY.
+        """
         if not self.ipinfo_api_key:
             return {"status": "no_api_key", "message": "Configurar IPINFO_API_KEY en .env"}
         
@@ -182,10 +230,15 @@ class ThreatIntel:
             return {"status": "error", "code": response.status_code}
         except Exception as e:
             return {"status": "error", "message": str(e)}
-    
-    # ==================== API 6: IPDATA ====================
+
+    # ------------------------------------------------------------
+    # API 6: IPDATA
+    # ------------------------------------------------------------
     def query_ipdata(self) -> Dict:
-        """IPdata - Geolocalización y reputación"""
+        """
+        Consulta IPdata para geolocalización, ASN y detección de TOR/proxy.
+        Requiere IPDATA_API_KEY.
+        """
         if not self.ipdata_api_key:
             return {"status": "no_api_key", "message": "Configurar IPDATA_API_KEY en .env"}
         
@@ -212,10 +265,16 @@ class ThreatIntel:
             return {"status": "error", "code": response.status_code}
         except Exception as e:
             return {"status": "error", "message": str(e)}
-    
-    # ==================== API 7: HUNTER.IO ====================
+
+    # ------------------------------------------------------------
+    # API 7: HUNTER.IO
+    # ------------------------------------------------------------
     def query_hunter(self) -> Dict:
-        """Hunter.io - Correos electrónicos asociados al dominio"""
+        """
+        Consulta Hunter.io para buscar direcciones de correo electrónico
+        asociadas al dominio (plan gratuito: 25 consultas/mes).
+        Requiere HUNTER_API_KEY.
+        """
         if not self.hunter_api_key:
             return {"status": "no_api_key", "message": "Configurar HUNTER_API_KEY en .env"}
         
@@ -236,10 +295,15 @@ class ThreatIntel:
             return {"status": "error", "code": response.status_code}
         except Exception as e:
             return {"status": "error", "message": str(e)}
-    
-    # ==================== API 8: NETLAS ====================
+
+    # ------------------------------------------------------------
+    # API 8: NETLAS
+    # ------------------------------------------------------------
     def query_netlas(self) -> Dict:
-        """Netlas - Búsqueda de activos expuestos"""
+        """
+        Consulta Netlas (motor de búsqueda de activos) para hosts relacionados con el dominio.
+        Requiere NETLAS_API_KEY.
+        """
         if not self.netlas_api_key:
             return {"status": "no_api_key", "message": "Configurar NETLAS_API_KEY en .env"}
         
@@ -260,10 +324,15 @@ class ThreatIntel:
             return {"status": "error", "code": response.status_code}
         except Exception as e:
             return {"status": "error", "message": str(e)}
-    
-    # ==================== API 9: URLSCAN.IO ====================
+
+    # ------------------------------------------------------------
+    # API 9: URLSCAN.IO
+    # ------------------------------------------------------------
     def query_urlscan(self) -> Dict:
-        """urlscan.io - Búsqueda de dominios en URLs"""
+        """
+        Consulta urlscan.io para buscar URLs que contengan el dominio.
+        Requiere URLSCAN_API_KEY.
+        """
         if not self.urlscan_api_key:
             return {"status": "no_api_key", "message": "Configurar URLSCAN_API_KEY en .env"}
         
@@ -285,10 +354,16 @@ class ThreatIntel:
             return {"status": "error", "code": response.status_code}
         except Exception as e:
             return {"status": "error", "message": str(e)}
-    
-    # ==================== API 10: ABUSEIPDB ====================
+
+    # ------------------------------------------------------------
+    # API 10: ABUSEIPDB
+    # ------------------------------------------------------------
     def query_abuseipdb(self) -> Dict:
-        """AbuseIPDB - Reputación de IP"""
+        """
+        Consulta AbuseIPDB para obtener la confianza de abuso de la IP,
+        número de reportes y país.
+        Requiere ABUSEIPDB_API_KEY.
+        """
         if not self.abuseipdb_api_key:
             return {"status": "no_api_key", "message": "Configurar ABUSEIPDB_API_KEY en .env"}
         
@@ -315,10 +390,15 @@ class ThreatIntel:
             return {"status": "error", "code": response.status_code}
         except Exception as e:
             return {"status": "error", "message": str(e)}
-    
-    # ==================== API 11: BEVIGIL ====================
+
+    # ------------------------------------------------------------
+    # API 11: BEVIGIL
+    # ------------------------------------------------------------
     def query_bevigil(self) -> Dict:
-        """BeVigil - Subdominios y endpoints"""
+        """
+        Consulta BeVigil para obtener subdominios del dominio.
+        Requiere BEVIGIL_API_KEY.
+        """
         if not self.bevigil_api_key:
             return {"status": "no_api_key", "message": "Configurar BEVIGIL_API_KEY en .env"}
         
@@ -338,10 +418,16 @@ class ThreatIntel:
             return {"status": "error", "code": response.status_code}
         except Exception as e:
             return {"status": "error", "message": str(e)}
-    
-    # ==================== API 12: GITHUB (sin API key, público) ====================
+
+    # ------------------------------------------------------------
+    # API 12: GITHUB (pública, sin clave)
+    # ------------------------------------------------------------
     def query_github(self) -> Dict:
-        """GitHub - Búsqueda pública de menciones del dominio"""
+        """
+        Busca en GitHub (API pública, no autenticada) menciones del dominio
+        en el código de repositorios públicos.
+        Límite aproximado de 60 requests por hora sin token.
+        """
         print(f"[*] GitHub: buscando menciones de {self.domain}")
         
         url = f"https://api.github.com/search/code?q={self.domain}"
@@ -357,13 +443,19 @@ class ThreatIntel:
                     "items": [{"repo": i['repository']['full_name'], "path": i['path']} 
                              for i in data.get('items', [])[:5]]
                 }
+            # Si da 403 (límite excedido), se indica con mensaje especial
             return {"status": "error", "code": response.status_code, "message": "Límite de GitHub sin autenticación"}
         except Exception as e:
             return {"status": "error", "message": str(e)}
-    
-    # ==================== API 13: GITLAB (sin API key, público) ====================
+
+    # ------------------------------------------------------------
+    # API 13: GITLAB (pública, sin clave)
+    # ------------------------------------------------------------
     def query_gitlab(self) -> Dict:
-        """GitLab - Búsqueda pública de menciones del dominio"""
+        """
+        Busca en GitLab (API pública) proyectos cuyo nombre o ruta contenga el dominio.
+        Límites menos restrictivos que GitHub.
+        """
         print(f"[*] GitLab: buscando menciones de {self.domain}")
         
         url = f"https://gitlab.com/api/v4/search?scope=projects&search={self.domain}"
@@ -381,10 +473,15 @@ class ThreatIntel:
             return {"status": "error", "code": response.status_code}
         except Exception as e:
             return {"status": "error", "message": str(e)}
-    
-    # ==================== HERRAMIENTAS GUIADAS (sin API) ====================
+
+    # ------------------------------------------------------------
+    # HERRAMIENTAS SIN API (solo guías)
+    # ------------------------------------------------------------
     def query_wappalyzer_guide(self) -> Dict:
-        """Wappalyzer - Guía para uso manual (no tiene API pública gratis)"""
+        """
+        Wappalyzer no tiene API pública gratuita.
+        Devuelve una guía de uso manual (extensión de navegador).
+        """
         return {
             "status": "manual",
             "message": "Wappalyzer no tiene API pública gratuita",
@@ -393,17 +490,26 @@ class ThreatIntel:
         }
     
     def query_builtwith_guide(self) -> Dict:
-        """BuiltWith - Guía para uso manual (no tiene API pública gratis)"""
+        """
+        BuiltWith no tiene API pública gratuita.
+        Devuelve la URL del sitio web para consulta manual.
+        """
         return {
             "status": "manual",
             "message": "BuiltWith no tiene API pública gratuita",
             "instructions": "Visitar https://builtwith.com/ y buscar el dominio",
             "url": f"https://builtwith.com/{self.domain}"
         }
-    
-    # ==================== EJECUCIÓN COMPLETA ====================
+
+    # ------------------------------------------------------------
+    # EJECUCIÓN COMPLETA
+    # ------------------------------------------------------------
     def run_all(self) -> Dict:
-        """Ejecuta TODAS las consultas de threat intelligence"""
+        """
+        Ejecuta todas las consultas de threat intelligence (13 APIs + 2 guías).
+        Retorna un diccionario con el dominio, IP resuelta y los resultados
+        de cada API.
+        """
         print("\n" + "="*55)
         print("FASE 2: THREAT INTELLIGENCE - MÚLTIPLES APIS")
         print("="*55)
@@ -428,7 +534,7 @@ class ThreatIntel:
             "gitlab": self.query_gitlab(),
             "wappalyzer_guide": self.query_wappalyzer_guide(),
             "builtwith_guide": self.query_builtwith_guide(),
-            "subdomains_from_virustotal": self.subdomains_from_vt  # <--- CORREGIDO
+            "subdomains_from_virustotal": self.subdomains_from_vt
         }
         
         return results
