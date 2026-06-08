@@ -5,17 +5,18 @@
 
 ## 📌 Descripción
 
-Herramienta OSINT (Open Source Intelligence) para el descubrimiento pasivo de activos expuestos en Internet, incluyendo búsquedas en la red Tor (dark web). Realiza consultas exclusivamente a fuentes públicas indexadas, sin interacción directa con los sistemas objetivo.
+Herramienta OSINT para el descubrimiento pasivo de activos expuestos en Internet, incluyendo búsquedas en la red Tor (dark web), fingerprinting tecnológico y análisis de vulnerabilidades (CVEs). Realiza consultas exclusivamente a fuentes públicas indexadas, **sin interacción directa** con los sistemas objetivo.
 
 ### 🎯 ¿Para qué sirve?
 
-- Descubrir subdominios, registros DNS y WHOIS.
-- Identificar tecnologías y servicios expuestos.
-- Encontrar correos electrónicos corporativos.
-- Verificar reputación de dominios e IPs.
-- Detectar máquinas activas mediante ICMP y TCP.
-- Buscar en la dark web (a través de Ahmia) menciones o enlaces relacionados con el dominio.
-- Generar informes en JSON, CSV y Markdown.
+-- Descubrimiento de subdominios, registros DNS y WHOIS.
+- Verificación de actividad de máquinas mediante ICMP y TCP.
+- Integración con 13+ APIs de threat intelligence (VirusTotal, Shodan, Hunter, etc.).
+- Monitorización en dark web (Ahmia, con soporte multi-motor opcional).
+- Fingerprinting tecnológico (detección de versiones de software, frameworks, etc.) usando wappalyzer-next (Docker).
+- Búsqueda de vulnerabilidades (CVEs) asociadas a tecnologías detectadas (NVD API).
+- Detección de exploits públicos (Exploit-DB).
+- Generación de informes en JSON, CSV y Markdown.
 
 ### 📖 Uso de la Dark Web
 
@@ -27,7 +28,7 @@ Si Tor no está corriendo, se mostrará un mensaje de error y se omitirá la bú
 
 ### ⚠️ Importante
 
-> **Este prototipo solo realiza consultas PASIVAS. La búsqueda en dark web requiere Tor y debe usarse únicamente con fines educativos y de investigación autorizada. No interactúa con contenido ilegal.**
+> **La búsqueda en dark web requiere Tor y debe usarse únicamente con fines educativos y de investigación autorizada. No interactúa con contenido ilegal.**
 
 ---
 
@@ -59,7 +60,26 @@ cp .env.example .env
 nano .env   # Añade tus claves (Shodan, VirusTotal, Hunter, etc.)
 ```
 
-### 5. Instalar y ejecutar Tor (para la dark web)
+### 5. Instalar Docker y wappalyzer-next (para fingerprinting)
+
+```bash
+git clone https://github.com/s0md3v/wappalyzer-next.git scripts/wappalyzer-next
+cd scripts/wappalyzer-next
+docker compose build
+cd ../..
+```
+
+### 6. Instalar Exploit-DB (opcional, para búsqueda de exploits)
+
+```bash
+# macOS
+brew install exploitdb
+
+# Linux
+sudo apt install exploitdb
+```
+
+### 7. Instalar y ejecutar Tor (para la dark web)
 
 ```bash
 # macOS
@@ -74,7 +94,7 @@ sudo systemctl start tor
 brew services list | grep tor   # o systemctl status tor
 ```
 
-### 6. Ejecutar 
+### 8. Ejecutar 
 
 ```bash
 python main.py
