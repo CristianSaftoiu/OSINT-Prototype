@@ -5,6 +5,9 @@ python-dotenv>=1.0.0
 dnspython>=2.2.0
 python-whois>=0.7.0
 osint-darkweb-pkg>=0.1.0
+wappalyzer>=0.4.0
+nvdlib>=0.2.0
+flask>=2.0.0
 
 # Opcionales
 lxml>=4.9.0

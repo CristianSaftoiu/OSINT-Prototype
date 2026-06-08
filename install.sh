@@ -1,3 +1,9 @@
+
+---
+
+## 📄 5. `install.sh` (script de instalación automática para macOS/Linux)
+
+```bash
 #!/bin/bash
 # Script de instalación automática para macOS/Linux
 
@@ -21,7 +27,17 @@ fi
 
 # Verificar Subfinder
 if ! command -v subfinder &> /dev/null; then
-    echo "⚠️  Subfinder no está instalado. Ejecuta: brew install subfinder (macOS) o instálalo manualmente."
+    echo "⚠️  Subfinder no está instalado. Instálalo con: brew install subfinder (macOS) o desde https://github.com/projectdiscovery/subfinder"
+fi
+
+# Verificar Tor
+if ! command -v tor &> /dev/null; then
+    echo "⚠️  Tor no está instalado. La dark web no funcionará. Instálalo con: brew install tor (macOS) o sudo apt install tor (Linux)"
+fi
+
+# Verificar Docker
+if ! command -v docker &> /dev/null; then
+    echo "⚠️  Docker no está instalado. El fingerprinting no funcionará. Descárgalo de https://www.docker.com/"
 fi
 
 echo "✅ Instalación completada!"

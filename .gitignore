@@ -3,7 +3,7 @@ venv/
 env/
 ENV/
 
-# Archivos de Python
+# Archivos Python
 __pycache__/
 *.pyc
 *.pyo
@@ -26,7 +26,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
-outputs/
-*.json
-*.csv
-*.md
+
+# Directorio de wappalyzer-next (se clona aparte)
+scripts/wappalyzer-next/
