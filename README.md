@@ -9,7 +9,7 @@ Herramienta OSINT para el descubrimiento pasivo de activos expuestos en Internet
 
 ### 🎯 ¿Para qué sirve?
 
--- Descubrimiento de subdominios, registros DNS y WHOIS.
+- Descubrimiento de subdominios, registros DNS y WHOIS.
 - Verificación de actividad de máquinas mediante ICMP y TCP.
 - Integración con 13+ APIs de threat intelligence (VirusTotal, Shodan, Hunter, etc.).
 - Monitorización en dark web (Ahmia, con soporte multi-motor opcional).
