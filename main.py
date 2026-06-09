@@ -44,7 +44,7 @@ def print_banner(dominio):
     print(f"""
     ╔══════════════════════════════════════════════════════════════════════════════╗
     ║                                                                              ║
-    ║     PROTOTIPO OSINT - {dominio:<48}                                          ║
+    ║     PROTOTIPO OSINT - {dominio:<13}                                          ║
     ║     Descubrimiento de activos expuestos                                      ║
     ║     Múltiples APIs: Shodan, Censys, VirusTotal, AlienVault, Hunter, etc.     ║
     ║                                                                              ║

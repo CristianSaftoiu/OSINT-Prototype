@@ -164,10 +164,8 @@ class ReportGenerator:
             ('ipinfo', 'IPinfo'),
             ('ipdata', 'IPdata'),
             ('hunter', 'Hunter.io'),
-            ('netlas', 'Netlas'),
             ('urlscan', 'urlscan.io'),
             ('abuseipdb', 'AbuseIPDB'),
-            ('bevigil', 'BeVigil'),
             ('github', 'GitHub'),
             ('gitlab', 'GitLab')
         ]

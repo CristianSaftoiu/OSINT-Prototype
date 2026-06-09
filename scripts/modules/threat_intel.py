@@ -28,11 +28,10 @@ class ThreatIntel:
         self.hunter_api_key = os.getenv("HUNTER_API_KEY", "")
         self.ipinfo_api_key = os.getenv("IPINFO_API_KEY", "")
         self.ipdata_api_key = os.getenv("IPDATA_API_KEY", "")
-        self.netlas_api_key = os.getenv("NETLAS_API_KEY", "")
         self.urlscan_api_key = os.getenv("URLSCAN_API_KEY", "")
         self.abuseipdb_api_key = os.getenv("ABUSEIPDB_API_KEY", "")
-        self.bevigil_api_key = os.getenv("BEVIGIL_API_KEY", "")
         self.github_token = os.getenv("GITHUB_TOKEN", "")
+        self.gitlab_token = os.getenv("GITLAB_TOKEN", "")
 
         try:
             self.ip_address = socket.gethostbyname(domain)
@@ -246,33 +245,7 @@ class ThreatIntel:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    # ---------- API 8: NETLAS ----------
-    def query_netlas(self) -> Dict:
-        if not self.netlas_api_key:
-            return {"status": "no_api_key", "message": "Configurar NETLAS_API_KEY en .env"}
-        print(f"[*] Netlas: buscando activos de {self.domain}")
-        url = f"https://app.netlas.io/api/hosts/search/?q=domain:{self.domain}"
-        headers = {"X-API-Key": self.netlas_api_key}
-        try:
-            response = requests.get(url, headers=headers, timeout=30)
-            if response.status_code == 200:
-                data = response.json()
-                return {
-                    "status": "ok",
-                    "total": data.get('total', 0),
-                    "hosts": data.get('items', [])[:5]
-                }
-            elif response.status_code in (401, 403):
-                print("   ⚠️ Netlas: Clave API inválida o no autorizada.")
-                return {"status": "error", "error_type": "invalid_key", "message": "Clave API inválida. Renueva tu clave en netlas.io"}
-            elif response.status_code == 429:
-                print("   ⚠️ Netlas: Cuota agotada.")
-                return {"status": "error", "error_type": "quota_exceeded", "message": "Cuota de Netlas agotada. Espera o actualiza tu plan"}
-            return {"status": "error", "code": response.status_code}
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
-
-    # ---------- API 9: URLSCAN.IO ----------
+    # ---------- API 8: URLSCAN.IO ----------
     def query_urlscan(self) -> Dict:
         if not self.urlscan_api_key:
             return {"status": "no_api_key", "message": "Configurar URLSCAN_API_KEY en .env"}
@@ -299,7 +272,7 @@ class ThreatIntel:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    # ---------- API 10: ABUSEIPDB ----------
+    # ---------- API 9: ABUSEIPDB ----------
     def query_abuseipdb(self) -> Dict:
         if not self.abuseipdb_api_key:
             return {"status": "no_api_key", "message": "Configurar ABUSEIPDB_API_KEY en .env"}
@@ -332,32 +305,7 @@ class ThreatIntel:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    # ---------- API 11: BEVIGIL ----------
-    def query_bevigil(self) -> Dict:
-        if not self.bevigil_api_key:
-            return {"status": "no_api_key", "message": "Configurar BEVIGIL_API_KEY en .env"}
-        print(f"[*] BeVigil: buscando subdominios de {self.domain}")
-        url = f"https://api.bevigil.com/domain/{self.domain}/subdomains"
-        headers = {"X-Api-Key": self.bevigil_api_key}
-        try:
-            response = requests.get(url, headers=headers, timeout=15)
-            if response.status_code == 200:
-                data = response.json()
-                return {
-                    "status": "ok",
-                    "subdomains": data.get('subdomains', [])[:20]
-                }
-            elif response.status_code in (401, 403):
-                print("   ⚠️ BeVigil: Clave API inválida o no autorizada.")
-                return {"status": "error", "error_type": "invalid_key", "message": "Clave API inválida. Renueva tu clave en bevigil.com"}
-            elif response.status_code == 429:
-                print("   ⚠️ BeVigil: Cuota agotada.")
-                return {"status": "error", "error_type": "quota_exceeded", "message": "Cuota de BeVigil agotada. Espera o actualiza tu plan"}
-            return {"status": "error", "code": response.status_code}
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
-
-    # ---------- API 12: GITHUB ----------
+    # ---------- API 10: GITHUB ----------
     def query_github(self) -> Dict:
         print(f"[*] GitHub: buscando menciones de {self.domain}")
         url = f"https://api.github.com/search/code?q={self.domain}"
@@ -385,43 +333,31 @@ class ThreatIntel:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    # ---------- API 13: GITLAB ----------
+    # ---------- API 11: GITLAB ----------
     def query_gitlab(self) -> Dict:
         print(f"[*] GitLab: buscando menciones de {self.domain}")
         url = f"https://gitlab.com/api/v4/search?scope=projects&search={self.domain}"
+        headers = {}
+        if self.gitlab_token:
+            headers["PRIVATE-TOKEN"] = self.gitlab_token
         try:
-            response = requests.get(url, timeout=15)
+            response = requests.get(url, headers=headers, timeout=15)
             if response.status_code == 200:
                 data = response.json()
                 return {
                     "status": "ok",
                     "total_count": len(data),
-                    "items": [{"name": p['name'], "path": p['path_with_namespace']} 
-                             for p in data[:5]]
+                    "items": [{"name": p['name'], "path": p['path_with_namespace']} for p in data[:5]]
                 }
             elif response.status_code == 429:
                 print("   ⚠️ GitLab: Límite de consultas excedido.")
                 return {"status": "error", "error_type": "quota_exceeded", "message": "Límite de GitLab. Espera unos minutos."}
+            elif response.status_code == 401:
+                print("   ⚠️ GitLab: Token inválido o no autorizado.")
+                return {"status": "error", "error_type": "invalid_key", "message": "Token de GitLab inválido. Configura GITLAB_TOKEN en .env"}
             return {"status": "error", "code": response.status_code}
         except Exception as e:
             return {"status": "error", "message": str(e)}
-
-    # ---------- Guías manuales ----------
-    def query_wappalyzer_guide(self) -> Dict:
-        return {
-            "status": "manual",
-            "message": "Wappalyzer no tiene API pública gratuita",
-            "instructions": "Instalar extensión de navegador Wappalyzer y visitar https://" + self.domain,
-            "url": f"https://www.wappalyzer.com/technologies/?q={self.domain}"
-        }
-
-    def query_builtwith_guide(self) -> Dict:
-        return {
-            "status": "manual",
-            "message": "BuiltWith no tiene API pública gratuita",
-            "instructions": "Visitar https://builtwith.com/ y buscar el dominio",
-            "url": f"https://builtwith.com/{self.domain}"
-        }
 
     # ---------- Ejecución completa ----------
     def run_all(self) -> Dict:
@@ -441,14 +377,10 @@ class ThreatIntel:
             "ipinfo": self.query_ipinfo(),
             "ipdata": self.query_ipdata(),
             "hunter": self.query_hunter(),
-            "netlas": self.query_netlas(),
             "urlscan": self.query_urlscan(),
             "abuseipdb": self.query_abuseipdb(),
-            "bevigil": self.query_bevigil(),
             "github": self.query_github(),
             "gitlab": self.query_gitlab(),
-            "wappalyzer_guide": self.query_wappalyzer_guide(),
-            "builtwith_guide": self.query_builtwith_guide(),
             "subdomains_from_virustotal": self.subdomains_from_vt
         }
         # Almacenar en el objeto para posible uso posterior
