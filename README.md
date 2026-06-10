@@ -1,34 +1,31 @@
-# 🔍 OSINT Prototype - Passive Asset Discovery Tool (con monitorización en Dark Web)
+# 🔍 OSINT Prototype
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/Docker-Required-blue.svg)](https://www.docker.com/)
 
 ## 📌 Descripción
 
-Herramienta OSINT para el descubrimiento pasivo de activos expuestos en Internet, incluyendo búsquedas en la red Tor (dark web), fingerprinting tecnológico y análisis de vulnerabilidades (CVEs). Realiza consultas exclusivamente a fuentes públicas indexadas, **sin interacción directa** con los sistemas objetivo.
+Herramienta OSINT (Open Source Intelligence) para el descubrimiento pasivo de activos expuestos en Internet, incluyendo búsquedas en la red Tor (dark web), fingerprinting tecnológico (detección de versiones de software) y análisis de vulnerabilidades (CVEs) con búsqueda de exploits públicos.
 
-### 🎯 ¿Para qué sirve?
+Realiza consultas exclusivamente a fuentes públicas indexadas, **sin interacción directa** con los sistemas objetivo.
 
-- Descubrimiento de subdominios, registros DNS y WHOIS.
-- Verificación de actividad de máquinas mediante ICMP y TCP.
-- Integración con 13+ APIs de threat intelligence (VirusTotal, Shodan, Hunter, etc.).
-- Monitorización en dark web (Ahmia, con soporte multi-motor opcional).
-- Fingerprinting tecnológico (detección de versiones de software, frameworks, etc.) usando wappalyzer-next (Docker).
-- Búsqueda de vulnerabilidades (CVEs) asociadas a tecnologías detectadas (NVD API).
-- Detección de exploits públicos (Exploit-DB).
-- Generación de informes en JSON, CSV y Markdown.
+### 🎯 Funcionalidades principales
 
-### 📖 Uso de la Dark Web
-
-Durante la ejecución, se te preguntará:
-   ¿Deseas realizar la búsqueda en la Dark Web? (s/n):
-Si respondes s y Tor está activo, el prototipo buscará en el motor Ahmia (.onion) los enlaces relacionados con el dominio.
-Los resultados (título y enlace .onion) se añadirán al informe Markdown.
-Si Tor no está corriendo, se mostrará un mensaje de error y se omitirá la búsqueda.
+- Descubrimiento de subdominios (crt.sh, Subfinder, BufferOver, DNS, WHOIS)
+- Verificación de actividad de máquinas mediante ICMP y TCP/80
+- Integración con 13 APIs de threat intelligence (VirusTotal, Shodan, Hunter, etc.)
+- Fingerprinting tecnológico (detección de versiones) usando wappalyzer-next (requiere Docker)
+- Búsqueda de vulnerabilidades (CVEs) asociadas a tecnologías detectadas (NVD API)
+- Detección de exploits públicos (Exploit-DB vía searchsploit)
+- Monitorización en dark web (Ahmia + crawling) a través de Tor
+- Generación de informes en SON, CSV y Markdown (con nombre del dominio y timestamp)
 
 ### ⚠️ Importante
 
-> **La búsqueda en dark web requiere Tor y debe usarse únicamente con fines educativos y de investigación autorizada. No interactúa con contenido ilegal.**
+> Su uso es exclusivamente para auditorías defensivas y fines educativos.
+
+> El fingerprinting requiere Docker instalado y funcionando. La dark web requiere Tor activo.
 
 ---
 
