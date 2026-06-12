@@ -6,7 +6,7 @@
 
 ## 📌 Descripción
 
-Herramienta OSINT (Open Source Intelligence) para el descubrimiento pasivo de activos expuestos en Internet, incluyendo búsquedas en la red Tor (dark web), fingerprinting tecnológico (detección de versiones de software) y análisis de vulnerabilidades (CVEs) con búsqueda de exploits públicos.
+Herramienta OSINT (Open Source Intelligence) para el descubrimiento de activos expuestos en Internet, incluyendo búsquedas en la red Tor (dark web), fingerprinting tecnológico (detección de versiones de software) y análisis de vulnerabilidades (CVEs) con búsqueda de exploits públicos.
 
 Realiza consultas exclusivamente a fuentes públicas indexadas, **sin interacción directa** con los sistemas objetivo.
 
